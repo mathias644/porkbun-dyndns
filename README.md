@@ -6,6 +6,7 @@ Used for updating a DNS record on porkbun.com in case the servers external IP ch
 1. pip install -r requirements.txt
 2. Create a file named .env or set your environment variables with "secretapikey" and "apikey" from Porkbun and "domain"
      the .env should look like:
+   
        secretapikey=sk1_000000000000000
        apikey=pk1_000000000000000
        domain=example.com
