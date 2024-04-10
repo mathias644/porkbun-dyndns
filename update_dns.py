@@ -1,23 +1,30 @@
 from requests import post,get
-from pickle import load
+from dotenv import load_dotenv
+from os import getenv
+
+load_dotenv()
+
+secretapikey = getenv('secretapikey')
+apikey = getenv('apikey')
+id = getenv('id')
+domain = getenv('domain')
+
 
 myip = get("http://ipinfo.io/ip").text
 
 print(f"My external IP is: {myip}")
 
-with open('variables', 'rb') as f:
-    secretapikey, apikey, id, domain = load(f)
 
 print(f"Checking if the domain {domain} is currently set to {myip}")
 
-with open('saved_ip', 'r+') as saved_ip:
-    if myip not in saved_ip.read():
-        
-        current_record_config = post(f"https://porkbun.com/api/json/v3/dns/retrieve/{domain}/{id}",json={"secretapikey":secretapikey, "apikey":apikey}).text
+current_record_config = post(f"https://porkbun.com/api/json/v3/dns/retrieve/{domain}/{id}",json={"secretapikey":secretapikey, "apikey":apikey}).json()
+current_record_ip = current_record_config.get("records")[0].get("content")
 
-        if myip not in current_record_config:
-            print("Detected that current configuration is not correct; Attempting to update current configuration")
-            post(f"https://porkbun.com/api/json/v3/dns/edit/{domain}/{id}", json={"secretapikey":secretapikey, "apikey":apikey, "type": "A", "content": {myip}})
+print(f"currently {domain} is set to {current_record_ip}")
 
-        print("Configuration updated, will update the saved_ip file now.")
-        saved_ip.write(myip)
+if myip not in current_record_ip:
+    print("Detected that current configuration is not correct; Attempting to update current configuration")
+
+    post(f"https://porkbun.com/api/json/v3/dns/edit/{domain}/{id}", json={"secretapikey":secretapikey, "apikey":apikey, "type": "A", "content": myip})
+
+    print("Configuration updated.")
