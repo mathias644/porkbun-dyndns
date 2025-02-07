@@ -4,25 +4,47 @@ from os import getenv
 
 load_dotenv()
 
-secretapikey = getenv('secretapikey')
-apikey = getenv('apikey')
-domain = getenv('domain')
+SECRET_API_KEY = getenv('secretapikey')
+API_KEY = getenv('apikey')
+DOMAIN = getenv('domain')
+
+API_BASE_URL = "https://api.porkbun.com/api/json/v3"
+IP_CHECK_URL = "http://ipinfo.io/ip"
 
 
-myip = get("http://ipinfo.io/ip").text
+myip = get(IP_CHECK_URL).text.strip()
 
 print(f"My external IP is: {myip}")
 
-print(f"Checking if the domain {domain} is currently set to {myip}")
+print(f"Checking if the domain {DOMAIN} is currently set to {myip}")
 
-current_record_config = post(f"https://api.porkbun.com/api/json/v3/dns/retrieveByNameType/{domain}/A",json={"secretapikey":secretapikey, "apikey":apikey}).json()
-current_record_ip = current_record_config.get("records")[0].get("content")
+auth_payload = {
+    "secretapikey": SECRET_API_KEY,
+    "apikey": API_KEY
+}
 
-print(f"currently {domain} is set to {current_record_ip}")
+current_record_config = post(
+    f"{API_BASE_URL}/dns/retrieveByNameType/{DOMAIN}/A",
+    json=auth_payload
+).json()
 
-if myip not in current_record_ip:
+if "records" not in current_record_config:
+    raise Exception("Failed to retrieve DNS records")
+
+current_record_ip = current_record_config["records"][0]["content"]
+
+print(f"currently {DOMAIN} is set to {current_record_ip}")
+
+if myip != current_record_ip:
     print("Detected that current configuration is not correct; Attempting to update current configuration")
 
-    post(f"https://api.porkbun.com/api/json/v3/dns/editByNameType/{domain}/A", json={"secretapikey":secretapikey, "apikey":apikey, "content": myip})
-
-    print("Configuration updated.")
+    update_payload = {**auth_payload, "content": myip}
+    response = post(
+            f"{API_BASE_URL}/dns/editByNameType/{DOMAIN}/A",
+            json=update_payload
+        )
+    
+    if response.status_code != 200:
+        raise Exception("Failed to update DNS record")
+    
+    print("Configuration updated successfully.")
